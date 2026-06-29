@@ -497,104 +497,31 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
 
 ---
 
-### 5. ExportHistory (Optional)
+### 5. Loading States
 
-**File:** `src/components/export/ExportHistory.tsx`
-
-**Purpose:** Display list of past exports
-
-**Props:**
-```typescript
-interface ExportHistoryProps {
-  userId: string;
-  limit?: number;
-  onRetry?: (jobId: string) => void;
-}
-```
+**Purpose:** Show progress during export generation
 
 **Implementation:**
+- Use `ExportStatusIndicator` component for real-time status
+- Display progress bar if backend provides percentage
+- Show estimated time remaining if available
+
 ```typescript
-import React from 'react';
-import { Table, Button, Icon, EmptyState } from '@sijil/ui';
-import { useExportHistory } from '../../hooks/useExportHistory';
-import { DownloadButton } from './DownloadButton';
-import { ExportStatusIndicator } from './ExportStatusIndicator';
-
-export const ExportHistory: React.FC<ExportHistoryProps> = ({
-  userId,
-  limit = 10,
-  onRetry,
-}) => {
-  const { history, isLoading, error } = useExportHistory(userId, limit);
-
-  if (isLoading) {
-    return <div>Loading export history...</div>;
-  }
-
-  if (error) {
-    return <div>Error loading history</div>;
-  }
-
-  if (!history || history.length === 0) {
-    return (
-      <EmptyState
-        icon="download"
-        title="No exports yet"
-        description="Your export history will appear here"
-      />
-    );
-  }
-
+// Example loading state in ExportModal
+if (exportJob.status === 'processing') {
   return (
-    <Table>
-      <Table.Head>
-        <Table.Row>
-          <Table.Cell>Document</Table.Cell>
-          <Table.Cell>Format</Table.Cell>
-          <Table.Cell>Status</Table.Cell>
-          <Table.Cell>Date</Table.Cell>
-          <Table.Cell>Actions</Table.Cell>
-        </Table.Row>
-      </Table.Head>
-      <Table.Body>
-        {history.map((job) => (
-          <Table.Row key={job.id}>
-            <Table.Cell>{job.documentTitle}</Table.Cell>
-            <Table.Cell>{job.format.toUpperCase()}</Table.Cell>
-            <Table.Cell>
-              {job.status === 'completed' ? (
-                <Icon name="check-circle" className="text-green-500" />
-              ) : job.status === 'failed' ? (
-                <Icon name="x-circle" className="text-red-500" />
-              ) : (
-                <Icon name="spinner" className="animate-spin" />
-              )}
-              {job.status}
-            </Table.Cell>
-            <Table.Cell>{new Date(job.createdAt).toLocaleDateString()}</Table.Cell>
-            <Table.Cell>
-              {job.status === 'completed' && job.downloadUrl ? (
-                <DownloadButton
-                  downloadUrl={job.downloadUrl}
-                  filename={job.filename}
-                  size="sm"
-                />
-              ) : job.status === 'failed' ? (
-                <Button
-                  onClick={() => onRetry?.(job.id)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Retry
-                </Button>
-              ) : null}
-            </Table.Cell>
-          </Table.Row>
-        ))}
-      </Table.Body>
-    </Table>
+    <div className="p-6">
+      <h3 className="text-lg font-semibold mb-4">Generating Export</h3>
+      <ProgressBar 
+        value={exportJob.progress} 
+        label={`Processing ${exportJob.progress}%`}
+      />
+      <p className="text-sm text-gray-500 mt-2">
+        Estimated time: {exportJob.estimatedTimeRemaining}
+      </p>
+    </div>
   );
-};
+}
 ```
 
 ---
@@ -711,57 +638,6 @@ export const useExportJob = (jobId: string) => {
   }, [fetchJob]);
 
   return { job, isLoading, error, refresh: fetchJob };
-};
-```
-
----
-
-### 3. useExportHistory
-
-**File:** `src/hooks/useExportHistory.ts`
-
-**Purpose:** Fetch user's export history
-
-**Implementation:**
-```typescript
-import { useState, useEffect } from 'react';
-import { apiClient } from '../lib/api';
-
-interface ExportHistoryItem {
-  id: string;
-  documentTitle: string;
-  documentId: string;
-  format: 'pdf' | 'latex' | 'markdown';
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  createdAt: string;
-  completedAt?: string;
-  downloadUrl?: string;
-  filename: string;
-}
-
-export const useExportHistory = (userId: string, limit: number = 10) => {
-  const [history, setHistory] = useState<ExportHistoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const data = await apiClient.get<ExportHistoryItem[]>(
-          `/users/${userId}/exports?limit=${limit}`
-        );
-        setHistory(data);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to load history'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchHistory();
-  }, [userId, limit]);
-
-  return { history, isLoading, error };
 };
 ```
 
@@ -904,17 +780,15 @@ export interface ExportRequest {
   options?: ExportOptions;
 }
 
-export interface ExportHistoryItem {
+export interface ExportJobStatus {
   id: string;
-  documentTitle: string;
-  documentId: string;
-  format: ExportFormat;
   status: ExportStatus;
+  progress?: number;
+  downloadUrl?: string;
+  filename?: string;
+  error?: string;
   createdAt: string;
   completedAt?: string;
-  downloadUrl?: string;
-  filename: string;
-  fileSize?: number;
 }
 ```
 
@@ -1079,12 +953,10 @@ src/
 │       ├── ExportTrigger.tsx
 │       ├── ExportModal.tsx
 │       ├── ExportStatusIndicator.tsx
-│       ├── DownloadButton.tsx
-│       └── ExportHistory.tsx
+│       └── DownloadButton.tsx
 ├── hooks/
 │   ├── useExport.ts
-│   ├── useExportJob.ts
-│   └── useExportHistory.ts
+│   └── useExportJob.ts
 ├── stores/
 │   └── exportStore.ts
 ├── types/

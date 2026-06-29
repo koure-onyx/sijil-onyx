@@ -104,24 +104,24 @@
 
 ---
 
-### 6. Export History (Optional)
+### 6. Loading States and Progress
 
-**Test Case:** Export history displays past exports
+**Test Case:** Export progress displays correctly
 
 **Steps:**
-1. Navigate to user profile or exports dashboard
-2. View export history table
-3. Verify multiple entries display
-4. Click download on completed items
-5. Click retry on failed items
+1. Initiate export for a large document
+2. Observe modal during processing state
+3. Verify progress indicator updates
+4. Wait for completion
+5. Verify success state with download button
 
 **Expected Results:**
-- ✓ Table displays columns: Document, Format, Status, Date, Actions
-- ✓ Most recent exports appear first
-- ✓ Status icons render correctly (check, x, spinner)
-- ✓ Download buttons work for completed items
-- ✓ Retry buttons initiate new export for failed items
-- ✓ Empty state shows when no history exists
+- ✓ Modal shows "Generating Export" title during processing
+- ✓ Progress bar displays percentage if available from backend
+- ✓ Estimated time remaining shown if provided
+- ✓ Status indicator changes color based on state (blue=processing, green=completed, red=failed)
+- ✓ Download button appears automatically on completion
+- ✓ Modal can be closed without cancelling export (export continues in background)
 
 ---
 
