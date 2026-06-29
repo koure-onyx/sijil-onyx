@@ -2,6 +2,8 @@
 
 This document is self-contained. An implementation AI can build Phase 08 using only this file.
 
+**Note:** This phase implements assessment viewing and interaction within topic content. All assessment data comes from the existing `/api/topics/:topicId/assessments` endpoint. There is no separate assessment submission API - assessments are interactive learning tools, not graded evaluations.
+
 ---
 
 ## 1. Pages and Layouts
@@ -16,12 +18,11 @@ This document is self-contained. An implementation AI can build Phase 08 using o
 
 **Props (from URL):**
 - `slug` - Topic slug
-- `mode` - 'practice' | 'graded' (query param)
 
 **Structure:**
 ```tsx
 <div className="container max-w-4xl py-8">
-  <QuizHeader topic={topic} mode={mode} />
+  <QuizHeader topic={topic} />
   <ProgressBar current={currentQuestion} total={totalQuestions} />
   
   <QuestionCard
@@ -44,20 +45,21 @@ This document is self-contained. An implementation AI can build Phase 08 using o
 ```
 
 **Behavior:**
-- Load assessment questions on mount
+- Load assessment questions on mount from `/api/topics/:topicId/assessments`
 - Save answers to localStorage on each selection
 - Track progress in URL state
-- Submit all answers at end (graded mode) or show immediate feedback (practice mode)
+- Show immediate feedback after each answer (practice-style learning)
+- No submission to backend - purely client-side interactive learning
 
 ---
 
-### Assessment Results Page
+### Assessment Results Page (Client-Side Only)
 
 **File:** `app/assessments/[id]/results/page.tsx`
 
-**Type:** Server Component with Client interactions
+**Type:** Client Component with localStorage data
 
-**Purpose:** Display quiz results, score, and detailed feedback.
+**Purpose:** Display quiz results from localStorage, score calculation done client-side.
 
 **Structure:**
 ```tsx
@@ -67,7 +69,6 @@ This document is self-contained. An implementation AI can build Phase 08 using o
   <AssessmentSummary
     correctCount={correctCount}
     incorrectCount={incorrectCount}
-    timeSpent={timeSpent}
   />
   
   <ReviewSection>
@@ -89,21 +90,7 @@ This document is self-contained. An implementation AI can build Phase 08 using o
 </div>
 ```
 
----
-
-### Practice Mode Page
-
-**File:** `app/practice/[topicId]/page.tsx`
-
-**Type:** Client Component
-
-**Purpose:** Unlimited practice with instant feedback.
-
-**Differences from Quiz Page:**
-- Shows correct/incorrect immediately after each answer
-- Allows unlimited attempts
-- No score tracking (or informal tracking)
-- Can skip questions freely
+**Note:** This page reads quiz data from localStorage, not from backend API. No `GET /api/assessments/:id/results` endpoint exists.
 
 ---
 
@@ -111,9 +98,8 @@ This document is self-contained. An implementation AI can build Phase 08 using o
 
 | Route | Purpose | Params |
 |-------|---------|--------|
-| `/topics/[slug]/quiz` | Take assessment | slug (path), mode (query) |
-| `/assessments/[id]/results` | View results | id (path) |
-| `/practice/[topicId]` | Practice mode | topicId (path) |
+| `/topics/[slug]/quiz` | Take assessment | slug (path) |
+| `/assessments/[id]/results` | View results (client-side) | id (path, from localStorage) |
 
 ---
 
@@ -129,78 +115,28 @@ This document is self-contained. An implementation AI can build Phase 08 using o
       "id": "assessment-1",
       "title": "Chapter 1 Quiz",
       "questionCount": 10,
-      "timeLimit": null,
-      "passingScore": 70,
-      "mode": ["practice", "graded"]
+      "questions": [
+        {
+          "id": "q1",
+          "type": "mcq",
+          "text": "What is the formula for force?",
+          "options": [
+            { "id": "a", "text": "F = ma" },
+            { "id": "b", "text": "F = mv" },
+            { "id": "c", "text": "F = m/a" },
+            { "id": "d", "text": "F = a/m" }
+          ],
+          "correctAnswer": "a",
+          "explanation": "Newton's Second Law states F = ma",
+          "points": 1
+        }
+      ]
     }
   ]
 }
 ```
 
-### GET /api/v1/assessments/:id
-
-**Response:**
-```json
-{
-  "data": {
-    "id": "assessment-1",
-    "title": "Chapter 1 Quiz",
-    "description": "Test your understanding of Chapter 1",
-    "questions": [
-      {
-        "id": "q1",
-        "type": "mcq",
-        "text": "What is the formula for force?",
-        "options": [
-          { "id": "a", "text": "F = ma" },
-          { "id": "b", "text": "F = mv" },
-          { "id": "c", "text": "F = m/a" },
-          { "id": "d", "text": "F = a/m" }
-        ],
-        "correctAnswer": "a",
-        "explanation": "Newton's Second Law states F = ma",
-        "points": 1
-      }
-    ],
-    "totalPoints": 10,
-    "passingScore": 70
-  }
-}
-```
-
-### POST /api/v1/assessments/:id/submit
-
-**Request:**
-```json
-{
-  "answers": {
-    "q1": "a",
-    "q2": "c"
-  },
-  "timeSpent": 180
-}
-```
-
-**Response:**
-```json
-{
-  "data": {
-    "score": 80,
-    "correctCount": 8,
-    "incorrectCount": 2,
-    "passed": true,
-    "results": [
-      {
-        "questionId": "q1",
-        "userAnswer": "a",
-        "correctAnswer": "a",
-        "isCorrect": true,
-        "points": 1
-      }
-    ]
-  }
-}
-```
+**Note:** This is the ONLY assessment API. There is NO submit endpoint - assessments are client-side interactive tools.
 
 ---
 
@@ -223,34 +159,24 @@ This document is self-contained. An implementation AI can build Phase 08 using o
 
 ## 5. State Management
 
-### Quiz State (Zustand Store)
+### Quiz State (localStorage)
 
-**File:** `stores/quiz-store.ts`
+**Note:** No Zustand store required. Quiz state is managed via localStorage for persistence and React state for UI.
 
+**Persistence:**
+- Save answers to localStorage on each change
+- Key: `quiz-progress-${assessmentId}`
+- Restore on page reload
+- Clear when user navigates away or completes quiz
+
+**State Structure (in component):**
 ```typescript
 interface QuizState {
   currentAssessmentId: string | null;
   currentQuestionIndex: number;
   answers: Record<string, string>;
-  isSubmitted: boolean;
-  startTime: number | null;
-  endTime: number | null;
-  
-  // Actions
-  setAssessment: (id: string) => void;
-  setCurrentQuestion: (index: number) => void;
-  setAnswer: (questionId: string, answer: string) => void;
-  submit: () => void;
-  reset: () => void;
 }
 ```
-
-### Persistence
-
-- Save answers to localStorage on each change
-- Key: `quiz-progress-${assessmentId}`
-- Restore on page reload
-- Clear on successful submission
 
 ---
 
@@ -286,9 +212,6 @@ export interface Assessment {
   description?: string;
   questions: Question[];
   totalPoints: number;
-  passingScore: number;
-  timeLimit?: number; // in seconds
-  modes: ('practice' | 'graded')[];
 }
 
 export interface QuizResults {
@@ -296,8 +219,6 @@ export interface QuizResults {
   percentage: number;
   correctCount: number;
   incorrectCount: number;
-  passed: boolean;
-  timeSpent: number;
   results: QuestionResult[];
 }
 
