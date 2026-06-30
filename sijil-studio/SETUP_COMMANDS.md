@@ -1,6 +1,10 @@
 # Setup Commands for Sijil Frontend
 # Run these commands locally in the sijil-studio directory
 
+# ============================================
+# Milestone 1: Project Initialization
+# ============================================
+
 # Step 1: Create Next.js Project (if starting fresh)
 # npx create-next-app@latest sijil-frontend
 # Choose:
@@ -37,5 +41,34 @@ npm install -D \
 # Step 4: Initialize Husky
 npx husky init
 
-# Step 5: Verify setup by running dev server
+# ============================================
+# Milestone 4: Design System (shadcn/ui)
+# ============================================
+
+# Step 5: Initialize shadcn/ui
+npx shadcn@latest init
+# Choose:
+# Style: New York
+# Base color: Slate
+# CSS variables: Yes
+
+# Step 6: Install shadcn/ui components
+npx shadcn@latest add \
+  button \
+  card \
+  input \
+  badge \
+  separator \
+  skeleton \
+  dropdown-menu \
+  avatar \
+  sheet \
+  dialog \
+  alert
+
+# ============================================
+# Verify Setup
+# ============================================
+
+# Step 7: Run dev server
 npm run dev
