@@ -67,8 +67,17 @@ npx shadcn@latest add \
   alert
 
 # ============================================
-# Verify Setup
+# Final Verification (Milestone 9-12)
 # ============================================
 
-# Step 7: Run dev server
+# Step 7: Run linter
+npm run lint
+
+# Step 8: Run TypeScript check
+npx tsc --noEmit
+
+# Step 9: Run build
+npm run build
+
+# Step 10: Run dev server
 npm run dev

@@ -1,13 +1,32 @@
-export default function HomePage() {
-  return (
-    <section className="mx-auto max-w-7xl px-6 py-20">
-      <h1 className="text-4xl font-bold">
-        Sijil
-      </h1>
+import { PageContainer, PageHeader, StatCard } from "@/components/shared";
+import { platformService } from "@/features/platform/services/platform.service";
 
-      <p className="mt-4 text-muted-foreground">
-        Foundation completed.
-      </p>
-    </section>
+export default async function HomePage() {
+  const stats = await platformService.stats();
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Sijil"
+        description="Frontend Foundation Ready"
+      />
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <StatCard
+          title="Users"
+          value={stats.users}
+        />
+
+        <StatCard
+          title="Documents"
+          value={stats.documents}
+        />
+
+        <StatCard
+          title="Certificates"
+          value={stats.certificates}
+        />
+      </div>
+    </PageContainer>
   );
 }
